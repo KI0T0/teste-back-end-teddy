@@ -11,7 +11,7 @@
 ## Resumo das mudanças
 
 <!-- Liste as principais alterações e explique por que elas são necessárias. -->
-Adiciona configuração do postgres com typeorm, cria arquivos dockers e faz migração inicial.
+
 ## Capturas de tela (opcional)
 
 <!-- Adicione capturas de tela ou GIFs, se aplicável. -->
