@@ -1,15 +1,15 @@
-FROM node:24.2.0-slim
+FROM node:lts-bullseye
 
 WORKDIR /app
 
-COPY package*.json ./
+COPY package.json pnpm-lock.yaml ./
 
-RUN npm install -g pnpm
+RUN npm install -g pnpm && pnpm install
 
-COPY . .
-
-RUN pnpm install
+COPY src/ src/
 
 RUN pnpm run build
 
-CMD [ "pnpm", "run", "start:dev" ]
+EXPOSE 3000
+
+CMD ["pnpm", "run", "start:prod"]
