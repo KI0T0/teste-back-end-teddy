@@ -16,7 +16,7 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main",
+    "start:prod": "node dist/main.js",
     "typeorm": "typeorm-ts-node-commonjs",
     "migration:generate": "typeorm-ts-node-commonjs migration:generate",
     "migration:run": "typeorm-ts-node-commonjs migration:run",
@@ -79,15 +79,30 @@
       "json",
       "ts"
     ],
-    "rootDir": "src",
-    "testRegex": ".*\\.spec\\.ts$",
+    "rootDir": ".",
+    "testRegex": "__tests__/.*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "collectCoverageFrom": [
-      "**/*.(t|j)s"
+      "src/**/*.(t|j)s"
     ],
-    "coverageDirectory": "../coverage",
+    "coveragePathIgnorePatterns": [
+      "index.ts",
+      "/node_modules/",
+      "/__tests__/",
+      "/src/app/main.ts",
+      "/src/app/app.module.ts",
+      "/src/database/data-source.ts",
+      "src/migrations/.*\\.ts$",
+      "/src/modules/.*/dto/.*\\.ts$",
+      "/src/modules/.*/entities/.*\\.ts$",
+      "/src/modules/.*/guards/.*\\.ts$",
+      "/src/modules/.*/jwt.strategy.ts$",
+      "/src/modules/.*/.*\\.module\\.ts$",
+      "/src/utils/decorators/.*\\.ts$"
+    ],
+    "coverageDirectory": "./coverage",
     "testEnvironment": "node"
   }
 }
