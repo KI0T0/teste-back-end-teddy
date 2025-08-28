@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ConflictException,
   Injectable,
   Logger,
   NotFoundException,
@@ -17,7 +16,7 @@ import { UrlEntity } from './entities/url.entity';
 
 interface RequestWithUser extends Request {
   user?: {
-    sub: number;
+    id: number;
     email: string;
   };
 }
@@ -47,36 +46,14 @@ export class UrlsService {
     createdAt: Date;
     clicks: number;
   }> {
-    const { longUrl, customAlias } = createUrlDto;
-    const userId = req.user?.sub;
+    const { longUrl } = createUrlDto;
+    const userId = req.user?.id;
 
     this.logger.log({ event: 'create_url:start', longUrl, userId });
 
     this.validateUrlProtocol(longUrl);
 
-    let shortCode: string;
-
-    if (customAlias) {
-      const allowCustomAlias = this.configService.get<boolean>('ALLOW_CUSTOM_ALIAS') || false;
-      if (!allowCustomAlias) {
-        throw new ConflictException('Alias personalizado não está habilitado');
-      }
-
-      this.validateCustomAlias(customAlias);
-
-      const existingUrl = await this.urlRepository.findOne({
-        where: { shortCode: customAlias },
-      });
-
-      if (existingUrl) {
-        this.logger.warn({ event: 'create_url:collision', shortCode: customAlias, attempt: 1 });
-        throw new ConflictException('Alias personalizado já existe');
-      }
-
-      shortCode = customAlias;
-    } else {
-      shortCode = await this.generateUniqueShortCode();
-    }
+    const shortCode = await this.generateUniqueShortCode();
 
     const urlEntity = this.urlRepository.create({
       longUrl,
@@ -113,14 +90,7 @@ export class UrlsService {
     }
   }
 
-  private validateCustomAlias(customAlias: string): void {
-    const aliasRegex = /^[A-Za-z0-9_-]{1,6}$/;
-    if (!aliasRegex.test(customAlias)) {
-      throw new BadRequestException(
-        'Alias personalizado deve ter 1-6 caracteres e conter apenas letras, números, hífen e underscore'
-      );
-    }
-  }
+  
 
   private async generateUniqueShortCode(): Promise<string> {
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
@@ -145,7 +115,7 @@ export class UrlsService {
 
   async updateUrl(id: string | number, req: RequestWithUser, updateUrlDto: UpdateUrlDto): Promise<UrlEntity> {
     const urlId = this.validateAndParseId(id);
-    const userId = req.user?.sub;
+    const userId = req.user?.id;
 
     if (!userId) {
       throw new UnauthorizedException('Usuário não autenticado');
@@ -172,7 +142,7 @@ export class UrlsService {
 
   async deleteUrl(id: string | number, req: RequestWithUser): Promise<void> {
     const urlId = this.validateAndParseId(id);
-    const userId = req.user?.sub;
+    const userId = req.user?.id;
 
     if (!userId) {
       throw new UnauthorizedException('Usuário não autenticado');
@@ -193,7 +163,9 @@ export class UrlsService {
   }
 
   async listUserUrls(req: RequestWithUser): Promise<UrlEntity[]> {
-    const userId = req.user?.sub;
+    const userId = req.user?.id;
+    console.log('listUserUrls - req.user:', req.user);
+    console.log('listUserUrls - userId:', userId);
 
     if (!userId) {
       throw new UnauthorizedException('Usuário não autenticado');
@@ -203,6 +175,9 @@ export class UrlsService {
       where: { userId, deletedAt: IsNull() },
       order: { createdAt: 'DESC' },
     });
+
+    console.log('listUserUrls - URLs encontradas:', urls);
+    console.log('listUserUrls - Query executada:', { userId, deletedAt: 'IS NULL' });
 
     return urls;
   }

@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AuthModule } from './auth/auth.module';
-import { RedirectModule } from './redirect/redirect.module';
-import { UrlsModule } from './urls/urls.module';
-import { UsersModule } from './users/users.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { RedirectModule } from './modules/redirect/redirect.module';
+import { UrlsModule } from './modules/urls/urls.module';
+import { UsersModule } from './modules/users/users.module';
 
 @Module({
   imports: [

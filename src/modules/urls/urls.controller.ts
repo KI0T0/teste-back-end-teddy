@@ -20,7 +20,7 @@ import { UrlsService } from './urls.service';
 
 interface RequestWithUser extends Request {
   user?: {
-    sub: number;
+    id: number;
     email: string;
   };
 }
@@ -32,10 +32,13 @@ export class UrlsController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Cria uma URL curta (autenticada ou anônima)' })
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Cria uma URL curta (autenticada)' })
   @ApiResponse({ status: 201, description: 'URL encurtada criada com sucesso' })
   @ApiResponse({ status: 400, description: 'URL inválida' })
-  @ApiResponse({ status: 409, description: 'Alias já está em uso' })
+  @ApiResponse({ status: 401, description: 'Usuário não autenticado' })
+  @ApiResponse({ status: 503, description: 'Erro interno/serviço indisponível' })
   async createUrl(@Body() createUrlDto: CreateUrlDto, @Req() req: RequestWithUser) {
     return await this.urlsService.createUrl(createUrlDto, req);
   }
@@ -46,6 +49,7 @@ export class UrlsController {
   @ApiOperation({ summary: 'Lista todas as URLs do usuário autenticado' })
   @ApiResponse({ status: 200, description: 'Lista de URLs retornada com sucesso' })
   @ApiResponse({ status: 401, description: 'Usuário não autenticado' })
+  @ApiResponse({ status: 503, description: 'Erro interno/serviço indisponível' })
   async listUserUrls(@Req() req: RequestWithUser) {
     return await this.urlsService.listUserUrls(req);
   }
@@ -60,6 +64,7 @@ export class UrlsController {
   @ApiResponse({ status: 401, description: 'Usuário não autenticado' })
   @ApiResponse({ status: 403, description: 'Usuário não tem permissão para editar esta URL' })
   @ApiResponse({ status: 404, description: 'URL não encontrada' })
+  @ApiResponse({ status: 503, description: 'Erro interno/serviço indisponível' })
   async updateUrl(@Param('id') id: string, @Body() updateUrlDto: UpdateUrlDto, @Req() req: RequestWithUser) {
     return await this.urlsService.updateUrl(id, req, updateUrlDto);
   }
@@ -73,6 +78,7 @@ export class UrlsController {
   @ApiResponse({ status: 401, description: 'Usuário não autenticado' })
   @ApiResponse({ status: 403, description: 'Usuário não tem permissão para remover esta URL' })
   @ApiResponse({ status: 404, description: 'URL não encontrada' })
+  @ApiResponse({ status: 503, description: 'Erro interno/serviço indisponível' })
   async deleteUrl(@Param('id') id: string, @Req() req: RequestWithUser) {
     await this.urlsService.deleteUrl(id, req);
   }
