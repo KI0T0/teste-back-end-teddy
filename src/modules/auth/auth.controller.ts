@@ -17,6 +17,7 @@ export class AuthController {
   @ApiResponse({ status: 201, description: 'Usuário registrado com sucesso' })
   @ApiResponse({ status: 400, description: 'Dados inválidos' })
   @ApiResponse({ status: 409, description: 'Email já está em uso' })
+  @ApiResponse({ status: 503, description: 'Erro interno/serviço indisponível' })
   async register(@Body() registerDto: RegisterDto) {
     this.logger.log(`Tentativa de registro de usuário com email: ${registerDto.email}`);
 
@@ -36,6 +37,7 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Login realizado com sucesso' })
   @ApiResponse({ status: 400, description: 'Dados inválidos' })
   @ApiResponse({ status: 401, description: 'Credenciais inválidas' })
+  @ApiResponse({ status: 503, description: 'Erro interno/serviço indisponível' })
   async login(@Body() loginDto: LoginDto) {
     this.logger.log(`Tentativa de login para o usuário: ${loginDto.email}`);
 

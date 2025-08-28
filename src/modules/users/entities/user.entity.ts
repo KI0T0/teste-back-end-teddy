@@ -8,7 +8,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { UrlEntity } from '../../urls/entities/url.entity';
-import { ToLowerCase } from '../../utils/decorators';
+import { ToLowerCase } from '../../../utils/decorators';
 
 @Entity('users')
 export class UserEntity {
