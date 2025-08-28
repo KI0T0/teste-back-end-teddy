@@ -1,5 +1,20 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Logger, Param, Post, Redirect, Request } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import type { Request } from 'express';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateUrlDto } from './dto/create-url.dto';
+import { UpdateUrlDto } from './dto/update-url.dto';
 import { UrlsService } from './urls.service';
 
 interface RequestWithUser extends Request {
@@ -11,50 +26,31 @@ interface RequestWithUser extends Request {
 
 @Controller('urls')
 export class UrlsController {
-  private readonly logger = new Logger(UrlsController.name);
-
   constructor(private readonly urlsService: UrlsService) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async createUrl(@Body() createUrlDto: CreateUrlDto, @Request() req: RequestWithUser) {
-    this.logger.log(`Tentativa de criação de URL: ${createUrlDto.longUrl}`);
-
-    try {
-      let userId: number | undefined;
-
-      if (req.user?.sub) {
-        userId = req.user.sub;
-        this.logger.log(`Usuário autenticado detectado: ${userId}`);
-      }
-
-      const result = await this.urlsService.createUrl(createUrlDto, userId);
-
-      this.logger.log(`URL criada com sucesso: ${result.shortCode}`);
-      return result;
-    } catch (error) {
-      this.logger.error(`Falha ao criar URL: ${error.message}`, error.stack);
-      throw error;
-    }
+  async createUrl(@Body() createUrlDto: CreateUrlDto, @Req() req: RequestWithUser) {
+    return await this.urlsService.createUrl(createUrlDto, req);
   }
 
-  @Get(':shortCode')
-  @Redirect()
-  async redirectToUrl(@Param('shortCode') shortCode: string) {
-    this.logger.log(`Tentativa de redirecionamento para: ${shortCode}`);
+  @Get()
+  @UseGuards(JwtAuthGuard)
+  async listUserUrls(@Req() req: RequestWithUser) {
+    return await this.urlsService.listUserUrls(req);
+  }
 
-    try {
-      const { longUrl } = await this.urlsService.redirectUrl(shortCode);
+  @Patch(':id')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async updateUrl(@Param('id') id: string, @Body() updateUrlDto: UpdateUrlDto, @Req() req: RequestWithUser) {
+    return await this.urlsService.updateUrl(id, req, updateUrlDto);
+  }
 
-      this.logger.log(`Redirecionando para: ${longUrl}`);
-
-      return {
-        url: longUrl,
-        statusCode: 301,
-      };
-    } catch (error) {
-      this.logger.error(`Falha no redirecionamento para: ${shortCode}`, error.stack);
-      throw error;
-    }
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteUrl(@Param('id') id: string, @Req() req: RequestWithUser) {
+    await this.urlsService.deleteUrl(id, req);
   }
 }
