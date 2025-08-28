@@ -1,29 +1,21 @@
 services:
   db:
-    image: postgres:17.5
-    container_name: shortener_db
+    container_name: shortener-db
+    image: postgres
+    restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: shortener_dev
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=root
+      - POSTGRES_DB=shortener_dev
+    logging:
+      options:
+        max-size: 10m
+        max-file: '3'
     ports:
-      - "5432:5432"
+      - 5432:5432
     volumes:
-      - db_data:/var/lib/postgresql/data
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: pg-url-shortener
-    environment:
-      - PORT=${PORT}
-    ports:
-      - '3000:3000'
-    depends_on:
-      - db
-    profiles:
-      - app
+      - pg-data:/var/lib/postgresql/data
 
 volumes:
-  db_data:
+  pg-data:
 
