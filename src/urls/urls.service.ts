@@ -4,7 +4,6 @@ import {
   Injectable,
   Logger,
   NotFoundException,
-  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -51,65 +50,56 @@ export class UrlsService {
     const { longUrl, customAlias } = createUrlDto;
     const userId = req.user?.sub;
 
-    try {
-      this.validateUrlProtocol(longUrl);
+    this.logger.log({ event: 'create_url:start', longUrl, userId });
 
-      let shortCode: string;
+    this.validateUrlProtocol(longUrl);
 
-      if (customAlias) {
-        const allowCustomAlias = this.configService.get<boolean>('ALLOW_CUSTOM_ALIAS') || false;
-        if (!allowCustomAlias) {
-          throw new ConflictException('Alias personalizado não está habilitado');
-        }
+    let shortCode: string;
 
-        this.validateCustomAlias(customAlias);
-
-        const existingUrl = await this.urlRepository.findOne({
-          where: { shortCode: customAlias },
-        });
-
-        if (existingUrl) {
-          this.logger.warn(`Alias personalizado já existe: ${customAlias}`);
-          throw new ConflictException('Alias personalizado já existe');
-        }
-
-        shortCode = customAlias;
-      } else {
-        shortCode = await this.generateUniqueShortCode();
+    if (customAlias) {
+      const allowCustomAlias = this.configService.get<boolean>('ALLOW_CUSTOM_ALIAS') || false;
+      if (!allowCustomAlias) {
+        throw new ConflictException('Alias personalizado não está habilitado');
       }
 
-      const urlEntity = this.urlRepository.create({
-        longUrl,
-        shortCode,
-        userId,
-        clicks: 0,
+      this.validateCustomAlias(customAlias);
+
+      const existingUrl = await this.urlRepository.findOne({
+        where: { shortCode: customAlias },
       });
 
-      const savedUrl = await this.urlRepository.save(urlEntity);
-
-      const baseUrl = this.configService.get<string>('BASE_URL') || 'http://localhost:3000';
-      const shortUrl = `${baseUrl}/${shortCode}`;
-
-      this.logger.log(
-        `URL criada com sucesso - ID: ${savedUrl.id}, shortCode: ${shortCode}, userId: ${userId || 'anônimo'}`
-      );
-
-      return {
-        shortUrl,
-        shortCode,
-        longUrl,
-        owner: !!userId,
-        createdAt: savedUrl.createdAt,
-        clicks: savedUrl.clicks,
-      };
-    } catch (error) {
-      if (error instanceof ConflictException) {
-        throw error;
+      if (existingUrl) {
+        this.logger.warn({ event: 'create_url:collision', shortCode: customAlias, attempt: 1 });
+        throw new ConflictException('Alias personalizado já existe');
       }
 
-      this.logger.error(`Erro ao criar URL - ${error.message}`, error.stack);
-      throw new ServiceUnavailableException('Erro interno do servidor');
+      shortCode = customAlias;
+    } else {
+      shortCode = await this.generateUniqueShortCode();
     }
+
+    const urlEntity = this.urlRepository.create({
+      longUrl,
+      shortCode,
+      userId,
+      clicks: 0,
+    });
+
+    const savedUrl = await this.urlRepository.save(urlEntity);
+
+    const baseUrl = this.configService.get<string>('BASE_URL') || 'http://localhost:3000';
+    const shortUrl = `${baseUrl}/${shortCode}`;
+
+    this.logger.log({ event: 'create_url:success', urlId: savedUrl.id, shortCode, userId });
+
+    return {
+      shortUrl,
+      shortCode,
+      longUrl,
+      owner: !!userId,
+      createdAt: savedUrl.createdAt,
+      clicks: savedUrl.clicks,
+    };
   }
 
   private validateUrlProtocol(url: string): void {
@@ -136,25 +126,21 @@ export class UrlsService {
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       const shortCode = nanoid(this.shortCodeLength);
 
-      try {
-        const existingUrl = await this.urlRepository.findOne({
-          where: { shortCode },
-        });
+      const existingUrl = await this.urlRepository.findOne({
+        where: { shortCode },
+      });
 
-        if (!existingUrl) {
-          return shortCode;
-        }
-
-        this.logger.debug(`Colisão de shortCode detectada: ${shortCode} (tentativa ${attempt})`);
-      } catch (error) {
-        this.logger.debug(`Erro ao verificar shortCode: ${error.message}`);
+      if (!existingUrl) {
+        return shortCode;
       }
+
+      this.logger.warn({ event: 'create_url:collision', shortCode, attempt });
     }
 
     this.logger.error(
       `Falha ao gerar shortCode único após ${this.maxRetries} tentativas (tamanho: ${this.shortCodeLength})`
     );
-    throw new ServiceUnavailableException('Erro ao gerar URL curta. Tente novamente.');
+    throw new BadRequestException('Erro ao gerar URL curta. Tente novamente.');
   }
 
   async updateUrl(id: string | number, req: RequestWithUser, updateUrlDto: UpdateUrlDto): Promise<UrlEntity> {
@@ -165,30 +151,23 @@ export class UrlsService {
       throw new UnauthorizedException('Usuário não autenticado');
     }
 
-    try {
-      const url = await this.urlRepository.findOne({
-        where: { id: urlId, userId, deletedAt: IsNull() },
-      });
+    const url = await this.urlRepository.findOne({
+      where: { id: urlId, userId, deletedAt: IsNull() },
+    });
 
-      if (!url) {
-        this.logger.warn(`URL não encontrada ou não pertence ao usuário - ID: ${urlId}, userId: ${userId}`);
-        throw new NotFoundException('URL não encontrada');
-      }
-
-      this.validateUrlProtocol(updateUrlDto.longUrl);
-
-      Object.assign(url, updateUrlDto);
-      const updatedUrl = await this.urlRepository.save(url);
-
-      return updatedUrl;
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-
-      this.logger.error(`Erro ao atualizar URL - ID: ${urlId}, userId: ${userId}, erro: ${error.message}`, error.stack);
-      throw new ServiceUnavailableException('Erro interno do servidor');
+    if (!url) {
+      this.logger.warn({ event: 'update_url:forbidden', urlId, userId });
+      throw new NotFoundException('URL não encontrada');
     }
+
+    this.validateUrlProtocol(updateUrlDto.longUrl);
+
+    Object.assign(url, updateUrlDto);
+    const updatedUrl = await this.urlRepository.save(url);
+
+    this.logger.log({ event: 'update_url:success', urlId, userId });
+
+    return updatedUrl;
   }
 
   async deleteUrl(id: string | number, req: RequestWithUser): Promise<void> {
@@ -199,25 +178,18 @@ export class UrlsService {
       throw new UnauthorizedException('Usuário não autenticado');
     }
 
-    try {
-      const url = await this.urlRepository.findOne({
-        where: { id: urlId, userId, deletedAt: IsNull() },
-      });
+    const url = await this.urlRepository.findOne({
+      where: { id: urlId, userId, deletedAt: IsNull() },
+    });
 
-      if (!url) {
-        this.logger.warn(`URL não encontrada ou não pertence ao usuário - ID: ${urlId}, userId: ${userId}`);
-        throw new NotFoundException('URL não encontrada');
-      }
-
-      await this.urlRepository.softDelete(urlId);
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-
-      this.logger.error(`Erro ao excluir URL - ID: ${urlId}, userId: ${userId}, erro: ${error.message}`, error.stack);
-      throw new ServiceUnavailableException('Erro interno do servidor');
+    if (!url) {
+      this.logger.warn({ event: 'delete_url:forbidden', urlId, userId });
+      throw new NotFoundException('URL não encontrada');
     }
+
+    await this.urlRepository.softDelete(urlId);
+
+    this.logger.log({ event: 'delete_url:success', urlId, userId });
   }
 
   async listUserUrls(req: RequestWithUser): Promise<UrlEntity[]> {
@@ -227,17 +199,12 @@ export class UrlsService {
       throw new UnauthorizedException('Usuário não autenticado');
     }
 
-    try {
-      const urls = await this.urlRepository.find({
-        where: { userId, deletedAt: IsNull() },
-        order: { createdAt: 'DESC' },
-      });
+    const urls = await this.urlRepository.find({
+      where: { userId, deletedAt: IsNull() },
+      order: { createdAt: 'DESC' },
+    });
 
-      return urls;
-    } catch (error) {
-      this.logger.error(`Erro ao listar URLs do usuário - userId: ${userId}, erro: ${error.message}`, error.stack);
-      throw new ServiceUnavailableException('Erro interno do servidor');
-    }
+    return urls;
   }
 
   private validateAndParseId(id: string | number): number {

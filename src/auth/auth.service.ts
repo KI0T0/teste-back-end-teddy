@@ -32,7 +32,8 @@ export class AuthService {
     this.logger.log(`Senha criptografada com sucesso para o email: ${normalizedEmail}`);
 
     const user = await this.usersService.create(normalizedEmail, passwordHash);
-    this.logger.log(`Usuário criado com sucesso com ID: ${user.id}`);
+    
+    this.logger.log({ event: 'auth:register', userId: user.id });
 
     return {
       user: {
@@ -49,18 +50,19 @@ export class AuthService {
 
     const user = await this.usersService.findByEmail(email);
     if (!user) {
-      this.logger.warn(`Falha no login: usuário não encontrado para o email: ${email}`);
+      this.logger.warn({ event: 'auth:login_failed', email });
       throw new UnauthorizedException('Credenciais inválidas');
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordValid) {
-      this.logger.warn(`Falha no login: senha inválida para o email: ${email}`);
+      this.logger.warn({ event: 'auth:login_failed', email });
       throw new UnauthorizedException('Credenciais inválidas');
     }
 
     const access_token = this.generateToken(user);
-    this.logger.log(`Login realizado com sucesso para o email: ${email}, token gerado`);
+    
+    this.logger.log({ event: 'auth:login', userId: user.id });
 
     return { access_token };
   }

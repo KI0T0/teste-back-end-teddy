@@ -96,3 +96,206 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
+# URL Shortener API
+
+API para encurtamento de URLs com autenticação opcional e contagem de cliques.
+
+## 🚀 Documentação da API
+
+A documentação completa da API está disponível através do Swagger:
+
+**📚 Swagger UI:** http://localhost:3000/api
+
+## 🛠️ Configuração do Projeto
+
+### Pré-requisitos
+- Node.js (versão 18 ou superior)
+- PostgreSQL
+- pnpm
+
+### Instalação
+
+```bash
+# Clone o repositório
+git clone <repository-url>
+cd teste-back-end-teddy
+
+# Instale as dependências
+pnpm install
+
+# Configure as variáveis de ambiente
+cp env.example .env
+# Edite o arquivo .env com suas configurações
+
+# Execute as migrações
+pnpm run migration:execute
+
+# Inicie o servidor
+pnpm run start:dev
+```
+
+## 📝 Variáveis de Ambiente
+
+```bash
+# App
+PORT=3000
+LOG_LEVEL=debug  # debug, info, warn, error
+BASE_URL=http://localhost:3000
+
+# Database
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASS=changeme
+DB_NAME=shortener_dev
+
+# Auth
+JWT_SECRET=changeme
+JWT_EXPIRES_IN=24h
+
+# URLs
+SHORT_CODE_LENGTH=6
+ALLOW_CUSTOM_ALIAS=false
+```
+
+## 🔍 Logs da Aplicação
+
+A aplicação utiliza logs estruturados para monitoramento e debugging. Exemplos de logs:
+
+### Criação de URL
+```json
+{
+  "event": "create_url:start",
+  "longUrl": "https://exemplo.com",
+  "userId": 123
+}
+
+{
+  "event": "create_url:success",
+  "urlId": 456,
+  "shortCode": "abc123",
+  "userId": 123
+}
+```
+
+### Redirecionamento
+```json
+{
+  "event": "redirect:hit",
+  "shortCode": "abc123",
+  "urlId": 456
+}
+
+{
+  "event": "redirect:not_found",
+  "shortCode": "invalid"
+}
+```
+
+### Autenticação
+```json
+{
+  "event": "auth:register",
+  "userId": 123
+}
+
+{
+  "event": "auth:login",
+  "userId": 123
+}
+
+{
+  "event": "auth:login_failed",
+  "email": "usuario@exemplo.com"
+}
+```
+
+## 🏗️ Estrutura do Projeto
+
+```
+src/
+├── auth/           # Autenticação e autorização
+├── urls/           # Gerenciamento de URLs
+├── redirect/       # Redirecionamento de URLs
+├── users/          # Gerenciamento de usuários
+├── database/       # Configuração do banco de dados
+└── utils/          # Utilitários e decorators
+```
+
+## 🧪 Testes
+
+```bash
+# Testes unitários
+pnpm run test
+
+# Testes em modo watch
+pnpm run test:watch
+
+# Cobertura de testes
+pnpm run test:cov
+
+# Testes e2e
+pnpm run test:e2e
+```
+
+## 🚀 Comandos Disponíveis
+
+```bash
+# Desenvolvimento
+pnpm run start:dev      # Modo desenvolvimento com hot reload
+pnpm run start:debug    # Modo debug
+
+# Produção
+pnpm run build          # Compilar o projeto
+pnpm run start:prod     # Executar em produção
+
+# Migrações
+pnpm run migration:generate  # Gerar nova migração
+pnpm run migration:run       # Executar migrações
+pnpm run migration:revert    # Reverter última migração
+
+# Qualidade de código
+pnpm run lint           # Verificar código
+pnpm run lint:fix       # Corrigir problemas automaticamente
+pnpm run format         # Formatar código
+```
+
+## 📊 Endpoints Principais
+
+- `POST /urls` - Criar URL curta
+- `GET /urls` - Listar URLs do usuário (autenticado)
+- `PATCH /urls/:id` - Atualizar URL (autenticado)
+- `DELETE /urls/:id` - Remover URL (autenticado)
+- `GET /:shortCode` - Redirecionar para URL original
+- `POST /auth/register` - Registrar usuário
+- `POST /auth/login` - Autenticar usuário
+
+## 🔐 Autenticação
+
+A API utiliza JWT (JSON Web Tokens) para autenticação. Para endpoints protegidos, inclua o token no header:
+
+```
+Authorization: Bearer <seu-token-jwt>
+```
+
+## 📈 Monitoramento
+
+Os logs são estruturados e incluem:
+- **info**: Eventos de negócio bem-sucedidos
+- **warn**: Comportamentos inesperados (não críticos)
+- **error**: Falhas inesperadas e erros do sistema
+
+Configure o nível de log através da variável `LOG_LEVEL` no arquivo `.env`.
+
+## 🤝 Contribuição
+
+1. Fork o projeto
+2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
+3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
+4. Push para a branch (`git push origin feature/AmazingFeature`)
+5. Abra um Pull Request
+
+## 📄 Licença
+
+Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
