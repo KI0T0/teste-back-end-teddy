@@ -65,7 +65,7 @@ export class UrlsService {
     const savedUrl = await this.urlRepository.save(urlEntity);
 
     const baseUrl = this.configService.get<string>('BASE_URL') || 'http://localhost:3000';
-    const shortUrl = `${baseUrl}/${shortCode}`;
+    const shortUrl = `${baseUrl}/redirect/${shortCode}`;
 
     this.logger.log({ event: 'create_url:success', urlId: savedUrl.id, shortCode, userId });
 
@@ -164,8 +164,6 @@ export class UrlsService {
 
   async listUserUrls(req: RequestWithUser): Promise<UrlEntity[]> {
     const userId = req.user?.id;
-    console.log('listUserUrls - req.user:', req.user);
-    console.log('listUserUrls - userId:', userId);
 
     if (!userId) {
       throw new UnauthorizedException('Usuário não autenticado');
@@ -175,9 +173,6 @@ export class UrlsService {
       where: { userId, deletedAt: IsNull() },
       order: { createdAt: 'DESC' },
     });
-
-    console.log('listUserUrls - URLs encontradas:', urls);
-    console.log('listUserUrls - Query executada:', { userId, deletedAt: 'IS NULL' });
 
     return urls;
   }

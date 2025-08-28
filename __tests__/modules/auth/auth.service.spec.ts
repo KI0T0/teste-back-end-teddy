@@ -4,11 +4,11 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
 import { Repository } from 'typeorm';
-import { UserEntity } from '../users/entities/user.entity';
-import { UsersService } from '../users/users.service';
-import { AuthService } from './auth.service';
-import { LoginDto } from './dto/login.dto';
-import { RegisterDto } from './dto/register.dto';
+import { UserEntity } from '../../../src/modules/users/entities/user.entity';
+import { UsersService } from '../../../src/modules/users/users.service';
+import { AuthService } from '../../../src/modules/auth/auth.service';
+import { LoginDto } from '../../../src/modules/auth/dto/login.dto';
+import { RegisterDto } from '../../../src/modules/auth/dto/register.dto';
 
 jest.mock('bcryptjs');
 
