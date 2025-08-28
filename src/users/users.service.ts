@@ -10,12 +10,14 @@ export class UsersService {
     private readonly userRepository: Repository<UserEntity>
   ) {}
 
-  async findByEmail(email: string): Promise<UserEntity | null> {
-    return this.userRepository.findOne({ where: { email } });
+  async findByEmail(email: string): Promise<UserEntity | undefined> {
+    const user = await this.userRepository.findOne({ where: { email } });
+    return user || undefined;
   }
 
-  async findById(id: number): Promise<UserEntity | null> {
-    return this.userRepository.findOne({ where: { id } });
+  async findById(id: number): Promise<UserEntity | undefined> {
+    const user = await this.userRepository.findOne({ where: { id } });
+    return user || undefined;
   }
 
   async create(email: string, passwordHash: string): Promise<UserEntity> {

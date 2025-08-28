@@ -7,9 +7,7 @@ export function ToLowerCase() {
     }
 
     if (Array.isArray(value)) {
-      return value.map((item) =>
-        typeof item === 'string' ? item.toLowerCase() : item
-      );
+      return value.map((item) => (typeof item === 'string' ? item.toLowerCase() : item));
     }
 
     if (typeof value === 'string') {

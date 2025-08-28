@@ -38,5 +38,5 @@ export class UrlEntity {
   user: UserEntity;
 
   @Column({ name: 'user_id' })
-  userId: number;
+  userId?: number;
 }

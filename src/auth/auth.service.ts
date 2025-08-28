@@ -1,9 +1,4 @@
-import {
-  ConflictException,
-  Injectable,
-  Logger,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { ConflictException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { UserEntity } from '../users/entities/user.entity';
@@ -34,9 +29,7 @@ export class AuthService {
 
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(password, saltRounds);
-    this.logger.log(
-      `Senha criptografada com sucesso para o email: ${normalizedEmail}`
-    );
+    this.logger.log(`Senha criptografada com sucesso para o email: ${normalizedEmail}`);
 
     const user = await this.usersService.create(normalizedEmail, passwordHash);
     this.logger.log(`Usuário criado com sucesso com ID: ${user.id}`);
@@ -56,9 +49,7 @@ export class AuthService {
 
     const user = await this.usersService.findByEmail(email);
     if (!user) {
-      this.logger.warn(
-        `Falha no login: usuário não encontrado para o email: ${email}`
-      );
+      this.logger.warn(`Falha no login: usuário não encontrado para o email: ${email}`);
       throw new UnauthorizedException('Credenciais inválidas');
     }
 
@@ -69,9 +60,7 @@ export class AuthService {
     }
 
     const access_token = this.generateToken(user);
-    this.logger.log(
-      `Login realizado com sucesso para o email: ${email}, token gerado`
-    );
+    this.logger.log(`Login realizado com sucesso para o email: ${email}, token gerado`);
 
     return { access_token };
   }

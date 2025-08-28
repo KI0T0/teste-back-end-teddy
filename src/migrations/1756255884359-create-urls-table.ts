@@ -27,9 +27,7 @@ export class CreateUrlsTable1756255884359 implements MigrationInterface {
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_urls_user_id"`);
-    await queryRunner.query(
-      `ALTER TABLE "urls" DROP CONSTRAINT "FK_urls_user_id__users_id"`
-    );
+    await queryRunner.query(`ALTER TABLE "urls" DROP CONSTRAINT "FK_urls_user_id__users_id"`);
     await queryRunner.query(`DROP TABLE "urls"`);
   }
 }

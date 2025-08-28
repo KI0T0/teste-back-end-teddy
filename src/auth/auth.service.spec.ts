@@ -24,7 +24,7 @@ describe('AuthService', () => {
     passwordHash: 'hashedPassword123',
     createdAt: new Date(),
     updatedAt: new Date(),
-    deletedAt: null as Date | null,
+    deletedAt: null,
     urls: [],
   } as UserEntity;
 
@@ -90,14 +90,9 @@ describe('AuthService', () => {
 
       const result = await service.register(mockRegisterDto);
 
-      expect(usersService.findByEmail).toHaveBeenCalledWith(
-        mockRegisterDto.email
-      );
+      expect(usersService.findByEmail).toHaveBeenCalledWith(mockRegisterDto.email);
       expect(bcrypt.hash).toHaveBeenCalledWith(mockRegisterDto.password, 10);
-      expect(usersService.create).toHaveBeenCalledWith(
-        mockRegisterDto.email,
-        hashedPassword
-      );
+      expect(usersService.create).toHaveBeenCalledWith(mockRegisterDto.email, hashedPassword);
       expect(result).toEqual({
         user: {
           id: createdUser.id,
@@ -109,12 +104,8 @@ describe('AuthService', () => {
     it('should throw ConflictException if user already exists', async () => {
       usersService.findByEmail.mockResolvedValue(mockUser as UserEntity);
 
-      await expect(service.register(mockRegisterDto)).rejects.toThrow(
-        ConflictException
-      );
-      expect(usersService.findByEmail).toHaveBeenCalledWith(
-        mockRegisterDto.email
-      );
+      await expect(service.register(mockRegisterDto)).rejects.toThrow(ConflictException);
+      expect(usersService.findByEmail).toHaveBeenCalledWith(mockRegisterDto.email);
       expect(usersService.create).not.toHaveBeenCalled();
     });
   });
@@ -128,10 +119,7 @@ describe('AuthService', () => {
       const result = await service.login(mockLoginDto);
 
       expect(usersService.findByEmail).toHaveBeenCalledWith(mockLoginDto.email);
-      expect(bcrypt.compare).toHaveBeenCalledWith(
-        mockLoginDto.password,
-        mockUser.passwordHash
-      );
+      expect(bcrypt.compare).toHaveBeenCalledWith(mockLoginDto.password, mockUser.passwordHash);
       expect(jwtService.sign).toHaveBeenCalledWith({
         sub: mockUser.id,
         email: mockUser.email,
@@ -142,9 +130,7 @@ describe('AuthService', () => {
     it('should throw UnauthorizedException if user not found', async () => {
       usersService.findByEmail.mockResolvedValue(null);
 
-      await expect(service.login(mockLoginDto)).rejects.toThrow(
-        UnauthorizedException
-      );
+      await expect(service.login(mockLoginDto)).rejects.toThrow(UnauthorizedException);
       expect(usersService.findByEmail).toHaveBeenCalledWith(mockLoginDto.email);
       expect(bcrypt.compare).not.toHaveBeenCalled();
       expect(jwtService.sign).not.toHaveBeenCalled();
@@ -154,14 +140,9 @@ describe('AuthService', () => {
       usersService.findByEmail.mockResolvedValue(mockUser as UserEntity);
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
-      await expect(service.login(mockLoginDto)).rejects.toThrow(
-        UnauthorizedException
-      );
+      await expect(service.login(mockLoginDto)).rejects.toThrow(UnauthorizedException);
       expect(usersService.findByEmail).toHaveBeenCalledWith(mockLoginDto.email);
-      expect(bcrypt.compare).toHaveBeenCalledWith(
-        mockLoginDto.password,
-        mockUser.passwordHash
-      );
+      expect(bcrypt.compare).toHaveBeenCalledWith(mockLoginDto.password, mockUser.passwordHash);
       expect(jwtService.sign).not.toHaveBeenCalled();
     });
   });

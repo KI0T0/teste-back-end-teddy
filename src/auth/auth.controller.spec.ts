@@ -90,9 +90,7 @@ describe('AuthController', () => {
       const conflictError = new ConflictException('User already exists');
       jest.spyOn(authService, 'register').mockRejectedValue(conflictError);
 
-      await expect(controller.register(mockRegisterDto)).rejects.toThrow(
-        ConflictException
-      );
+      await expect(controller.register(mockRegisterDto)).rejects.toThrow(ConflictException);
       expect(authService.register).toHaveBeenCalledWith(mockRegisterDto);
     });
   });
@@ -112,14 +110,10 @@ describe('AuthController', () => {
     });
 
     it('should handle login failure and rethrow error', async () => {
-      const unauthorizedError = new UnauthorizedException(
-        'Invalid credentials'
-      );
+      const unauthorizedError = new UnauthorizedException('Invalid credentials');
       jest.spyOn(authService, 'login').mockRejectedValue(unauthorizedError);
 
-      await expect(controller.login(mockLoginDto)).rejects.toThrow(
-        UnauthorizedException
-      );
+      await expect(controller.login(mockLoginDto)).rejects.toThrow(UnauthorizedException);
       expect(authService.login).toHaveBeenCalledWith(mockLoginDto);
     });
   });
