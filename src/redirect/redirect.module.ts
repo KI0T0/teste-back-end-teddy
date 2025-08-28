@@ -1,0 +1,12 @@
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { UrlEntity } from '../urls/entities/url.entity';
+import { RedirectController } from './redirect.controller';
+import { RedirectService } from './redirect.service';
+
+@Module({
+  imports: [TypeOrmModule.forFeature([UrlEntity])],
+  controllers: [RedirectController],
+  providers: [RedirectService],
+})
+export class RedirectModule {}

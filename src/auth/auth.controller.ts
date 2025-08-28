@@ -19,7 +19,7 @@ export class AuthController {
       this.logger.log(`Usuário registrado com sucesso: ${result.user.email}`);
       return result;
     } catch (error) {
-      this.logger.error(`Falha no registro para o email: ${registerDto.email}`, error.stack);
+      this.logger.error(`Falha no registro para o email: ${registerDto.email}`);
       throw error;
     }
   }

@@ -1,10 +1,27 @@
-import { ConflictException, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
+import type { Request } from 'express';
 import { nanoid } from 'nanoid';
 import { IsNull, Repository } from 'typeorm';
 import { CreateUrlDto } from './dto/create-url.dto';
+import { UpdateUrlDto } from './dto/update-url.dto';
 import { UrlEntity } from './entities/url.entity';
+
+interface RequestWithUser extends Request {
+  user?: {
+    sub: number;
+    email: string;
+  };
+}
 
 @Injectable()
 export class UrlsService {
@@ -22,7 +39,7 @@ export class UrlsService {
 
   async createUrl(
     createUrlDto: CreateUrlDto,
-    userId?: number
+    req: RequestWithUser
   ): Promise<{
     shortUrl: string;
     shortCode: string;
@@ -32,8 +49,7 @@ export class UrlsService {
     clicks: number;
   }> {
     const { longUrl, customAlias } = createUrlDto;
-
-    this.logger.log(`Iniciando criação de URL: ${longUrl}, userId: ${userId || 'anônimo'}`);
+    const userId = req.user?.sub;
 
     try {
       this.validateUrlProtocol(longUrl);
@@ -45,6 +61,8 @@ export class UrlsService {
         if (!allowCustomAlias) {
           throw new ConflictException('Alias personalizado não está habilitado');
         }
+
+        this.validateCustomAlias(customAlias);
 
         const existingUrl = await this.urlRepository.findOne({
           where: { shortCode: customAlias },
@@ -73,7 +91,7 @@ export class UrlsService {
       const shortUrl = `${baseUrl}/${shortCode}`;
 
       this.logger.log(
-        `URL criada com sucesso: ID=${savedUrl.id}, shortCode=${shortCode}, userId=${userId || 'anônimo'}`
+        `URL criada com sucesso - ID: ${savedUrl.id}, shortCode: ${shortCode}, userId: ${userId || 'anônimo'}`
       );
 
       return {
@@ -89,7 +107,7 @@ export class UrlsService {
         throw error;
       }
 
-      this.logger.error(`Erro ao criar URL: ${error.message}`, error.stack);
+      this.logger.error(`Erro ao criar URL - ${error.message}`, error.stack);
       throw new ServiceUnavailableException('Erro interno do servidor');
     }
   }
@@ -98,10 +116,19 @@ export class UrlsService {
     try {
       const urlObj = new URL(url);
       if (!['http:', 'https:'].includes(urlObj.protocol)) {
-        throw new Error('Protocolo não permitido. Apenas HTTP e HTTPS são aceitos.');
+        throw new BadRequestException('Protocolo não permitido. Apenas HTTP e HTTPS são aceitos.');
       }
     } catch {
-      throw new Error('URL inválida');
+      throw new BadRequestException('URL inválida');
+    }
+  }
+
+  private validateCustomAlias(customAlias: string): void {
+    const aliasRegex = /^[A-Za-z0-9_-]{1,6}$/;
+    if (!aliasRegex.test(customAlias)) {
+      throw new BadRequestException(
+        'Alias personalizado deve ter 1-6 caracteres e conter apenas letras, números, hífen e underscore'
+      );
     }
   }
 
@@ -118,45 +145,106 @@ export class UrlsService {
           return shortCode;
         }
 
-        this.logger.warn(`Colisão de shortCode detectada: ${shortCode}, tentativa ${attempt}`);
+        this.logger.debug(`Colisão de shortCode detectada: ${shortCode} (tentativa ${attempt})`);
       } catch (error) {
-        this.logger.error(`Erro ao verificar shortCode: ${error.message}`, error.stack);
+        this.logger.debug(`Erro ao verificar shortCode: ${error.message}`);
       }
     }
 
-    this.logger.error(`Falha ao gerar shortCode único após ${this.maxRetries} tentativas`);
+    this.logger.error(
+      `Falha ao gerar shortCode único após ${this.maxRetries} tentativas (tamanho: ${this.shortCodeLength})`
+    );
     throw new ServiceUnavailableException('Erro ao gerar URL curta. Tente novamente.');
   }
 
-  async redirectUrl(shortCode: string): Promise<{ longUrl: string; urlId: number }> {
-    this.logger.log(`Tentativa de redirecionamento para shortCode: ${shortCode}`);
+  async updateUrl(id: string | number, req: RequestWithUser, updateUrlDto: UpdateUrlDto): Promise<UrlEntity> {
+    const urlId = this.validateAndParseId(id);
+    const userId = req.user?.sub;
+
+    if (!userId) {
+      throw new UnauthorizedException('Usuário não autenticado');
+    }
 
     try {
       const url = await this.urlRepository.findOne({
-        where: { shortCode, deletedAt: IsNull() },
-        select: ['id', 'longUrl'],
+        where: { id: urlId, userId, deletedAt: IsNull() },
       });
 
       if (!url) {
-        this.logger.warn(`ShortCode não encontrado: ${shortCode}`);
+        this.logger.warn(`URL não encontrada ou não pertence ao usuário - ID: ${urlId}, userId: ${userId}`);
         throw new NotFoundException('URL não encontrada');
       }
 
-      await this.urlRepository.increment({ id: url.id }, 'clicks', 1);
+      this.validateUrlProtocol(updateUrlDto.longUrl);
 
-      this.logger.log(`Redirecionamento realizado com sucesso: shortCode=${shortCode}, urlId=${url.id}`);
+      Object.assign(url, updateUrlDto);
+      const updatedUrl = await this.urlRepository.save(url);
 
-      return {
-        longUrl: url.longUrl,
-        urlId: url.id,
-      };
+      return updatedUrl;
     } catch (error) {
       if (error instanceof NotFoundException) {
         throw error;
       }
 
-      this.logger.error(`Erro ao incrementar clicks para shortCode: ${shortCode}`, error.stack);
+      this.logger.error(`Erro ao atualizar URL - ID: ${urlId}, userId: ${userId}, erro: ${error.message}`, error.stack);
       throw new ServiceUnavailableException('Erro interno do servidor');
     }
+  }
+
+  async deleteUrl(id: string | number, req: RequestWithUser): Promise<void> {
+    const urlId = this.validateAndParseId(id);
+    const userId = req.user?.sub;
+
+    if (!userId) {
+      throw new UnauthorizedException('Usuário não autenticado');
+    }
+
+    try {
+      const url = await this.urlRepository.findOne({
+        where: { id: urlId, userId, deletedAt: IsNull() },
+      });
+
+      if (!url) {
+        this.logger.warn(`URL não encontrada ou não pertence ao usuário - ID: ${urlId}, userId: ${userId}`);
+        throw new NotFoundException('URL não encontrada');
+      }
+
+      await this.urlRepository.softDelete(urlId);
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      this.logger.error(`Erro ao excluir URL - ID: ${urlId}, userId: ${userId}, erro: ${error.message}`, error.stack);
+      throw new ServiceUnavailableException('Erro interno do servidor');
+    }
+  }
+
+  async listUserUrls(req: RequestWithUser): Promise<UrlEntity[]> {
+    const userId = req.user?.sub;
+
+    if (!userId) {
+      throw new UnauthorizedException('Usuário não autenticado');
+    }
+
+    try {
+      const urls = await this.urlRepository.find({
+        where: { userId, deletedAt: IsNull() },
+        order: { createdAt: 'DESC' },
+      });
+
+      return urls;
+    } catch (error) {
+      this.logger.error(`Erro ao listar URLs do usuário - userId: ${userId}, erro: ${error.message}`, error.stack);
+      throw new ServiceUnavailableException('Erro interno do servidor');
+    }
+  }
+
+  private validateAndParseId(id: string | number): number {
+    const urlId = typeof id === 'string' ? parseInt(id, 10) : id;
+    if (Number.isNaN(urlId)) {
+      throw new BadRequestException('ID inválido');
+    }
+    return urlId;
   }
 }
