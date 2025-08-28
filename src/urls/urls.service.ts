@@ -1,8 +1,8 @@
-import { ConflictException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { nanoid } from 'nanoid';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { CreateUrlDto } from './dto/create-url.dto';
 import { UrlEntity } from './entities/url.entity';
 
@@ -126,5 +126,37 @@ export class UrlsService {
 
     this.logger.error(`Falha ao gerar shortCode único após ${this.maxRetries} tentativas`);
     throw new ServiceUnavailableException('Erro ao gerar URL curta. Tente novamente.');
+  }
+
+  async redirectUrl(shortCode: string): Promise<{ longUrl: string; urlId: number }> {
+    this.logger.log(`Tentativa de redirecionamento para shortCode: ${shortCode}`);
+
+    try {
+      const url = await this.urlRepository.findOne({
+        where: { shortCode, deletedAt: IsNull() },
+        select: ['id', 'longUrl'],
+      });
+
+      if (!url) {
+        this.logger.warn(`ShortCode não encontrado: ${shortCode}`);
+        throw new NotFoundException('URL não encontrada');
+      }
+
+      await this.urlRepository.increment({ id: url.id }, 'clicks', 1);
+
+      this.logger.log(`Redirecionamento realizado com sucesso: shortCode=${shortCode}, urlId=${url.id}`);
+
+      return {
+        longUrl: url.longUrl,
+        urlId: url.id,
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      this.logger.error(`Erro ao incrementar clicks para shortCode: ${shortCode}`, error.stack);
+      throw new ServiceUnavailableException('Erro interno do servidor');
+    }
   }
 }

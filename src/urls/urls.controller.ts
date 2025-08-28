@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, HttpStatus, Logger, Post, Request } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Logger, Param, Post, Redirect, Request } from '@nestjs/common';
 import { CreateUrlDto } from './dto/create-url.dto';
 import { UrlsService } from './urls.service';
 
@@ -34,6 +34,26 @@ export class UrlsController {
       return result;
     } catch (error) {
       this.logger.error(`Falha ao criar URL: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  @Get(':shortCode')
+  @Redirect()
+  async redirectToUrl(@Param('shortCode') shortCode: string) {
+    this.logger.log(`Tentativa de redirecionamento para: ${shortCode}`);
+
+    try {
+      const { longUrl } = await this.urlsService.redirectUrl(shortCode);
+
+      this.logger.log(`Redirecionando para: ${longUrl}`);
+
+      return {
+        url: longUrl,
+        statusCode: 301,
+      };
+    } catch (error) {
+      this.logger.error(`Falha no redirecionamento para: ${shortCode}`, error.stack);
       throw error;
     }
   }
